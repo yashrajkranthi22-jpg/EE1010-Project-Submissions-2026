@@ -1,0 +1,35 @@
+REFERENCES
+
+1.  Arduino. “Arduino UNO Rev3.” Arduino Documentation.
+    https://docs.arduino.cc/hardware/uno-rev3/
+
+2.  Arduino. “millis() – Arduino Reference.”
+    https://docs.arduino.cc/language-reference/en/functions/time/millis/
+
+3.  Texas Instruments. “SN74LS47 BCD-to-7-Segment Decoder/Driver.”
+    Datasheet. https://www.ti.com/lit/ds/symlink/sn74ls47.pdf
+
+4.  Arduino. “digitalRead() – Arduino Reference.”
+    https://docs.arduino.cc/language-reference/en/functions/digital-io/digitalread/
+
+5.  Arduino. “digitalWrite() – Arduino Reference.”
+    https://docs.arduino.cc/language-reference/en/functions/digital-io/digitalwrite/
+
+6.  Arduino. “pinMode() – Arduino Reference.”
+    https://docs.arduino.cc/language-reference/en/functions/digital-io/pinmode/
+
+7.  Arduino. “Debounce – Built-in Example.” Arduino IDE Examples →
+    Digital → Debounce.
+    https://docs.arduino.cc/built-in-examples/digital/Debounce/
+
+8.  Arduino. “State Change Detection – Built-in Example.” Arduino IDE
+    Examples → Digital → State Change Detection.
+    https://docs.arduino.cc/built-in-examples/digital/StateChangeDetection/
+
+9.  Electronics Tutorials. “Multiplexing 7-Segment Displays.”
+    https://www.electronics-tutorials.ws/blog/7-segment-display-tutorial.html
+
+10. All About Circuits. “Seven-Segment Display.”
+    https://www.allaboutcircuits.com/textbook/digital/chpt-8/seven-segment-display/
+
+11. Coding assistancw. "LLM's like chatgpt and gemini"
