@@ -1,0 +1,29 @@
+REFERENCES
+
+[1] C. K. Alexander and M. N. O. Sadiku, Fundamentals of Electric
+    Circuits, 7th ed., McGraw-Hill, 2026.
+
+[2] R. L. Boylestad and L. Nashelsky, Electronic Devices and Circuit
+    Theory, 11th ed., Pearson, 2013.
+
+[3] Texas Instruments, "LM340, LM340A and LM7805 Family Wide VIN
+    1.5-A Fixed Voltage Regulators," Datasheet.
+
+[4] Texas Instruments, "LM2596 SIMPLE SWITCHER Power Converter
+    150-kHz 3-A Step-Down Voltage Regulator," Datasheet.
+
+[5] Diodes Incorporated, "1N4001–1N4007," Datasheet DS28002.
+
+[6] Texas Instruments, "Linear Regulator Design Guide for LDOs,"
+    Application Report SLVA118A.
+
+[7] USB Implementers Forum, "Universal Serial Bus Specification,
+    Revision 2.0."
+
+[8] International Electrotechnical Commission, "IEC 62368-1:
+    Audio/video, information and communication technology equipment –
+    Part 1: Safety requirements."
+
+[9] OpenSCAD, "OpenSCAD User Manual and Language Reference,"
+     OpenSCAD Documentation.
+
