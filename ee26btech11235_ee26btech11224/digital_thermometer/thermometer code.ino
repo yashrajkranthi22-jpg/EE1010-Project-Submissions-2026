@@ -2,45 +2,45 @@
 #include <LiquidCrystal.h>
 #include <stdlib.h>
 #include <math.h>
+#include "pt100_quadratic_coefficients.h"
 
 // ============================================================
-// LCD: JHD162A-compatible 16x2 LCD in 4-bit mode
-// RS -> D12, E -> D11
-// D4 -> D5, D5 -> D4, D6 -> D3, D7 -> D2
+// PT100 thermometer: quadratic least-squares calibration
+//
+// Calibration feature:
+//   d = A0_mean - A1_mean
+// Normalized feature:
+//   z = (d - FEATURE_CENTER) / FEATURE_SCALE
+// Quadratic LSQ model:
+//   T_C = LSQ_C0 + LSQ_C1*z + LSQ_C2*z*z
+//
+// IMPORTANT:
+// This version ALWAYS displays the model's numerical temperature
+// estimate after sampling A0 and A1. There is no A1 layout guard
+// and no ADC-rail check that blocks the display.
+// Instead, the second LCD row and Serial status identify ADC-rail
+// readings or features outside the calibration range.
+//
+// A displayed estimate outside the calibrated feature range is an
+// extrapolation, not a claim of accuracy. Fix hardware instability
+// even though the display continues to show the calculated estimate.
 // ============================================================
+
+// LCD: RS -> D12, E -> D11; LCD D4..D7 -> Arduino D5,D4,D3,D2
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-// ============================================================
-// HARDWARE PINS
-// ============================================================
+// Hardware pins
 const uint8_t EXCITATION_PIN = 7;
 const uint8_t SENSOR_PIN_A0 = A0;
 const uint8_t SENSOR_PIN_A1 = A1;
 const uint8_t UNIT_BUTTON_PIN = 8;
 
-// ============================================================
-// PRELIMINARY DIFFERENCE-BASED CALIBRATION
-// feature = A0_mean - A1_mean
-// T_C = C0 + C1 * ((feature - FEATURE_CENTER) / FEATURE_SCALE)
-//
-// Based on 16 approximate group means: ten earlier current-layout
-// groups, five newer groups, and the ~29.7 C normal-position point.
-// These are provisional coefficients: use the fixed
-// final enclosure/wiring and validate on new sessions.
-// ============================================================
-const float FEATURE_CENTER = -214.0f;
-const float FEATURE_SCALE  = 20.0f;
-const float C0 = 60.934888f;
-const float C1 = 26.589821f;
-
-// Observed feature span of the calibration groups, with a small
-// guard margin. This is not permission to extrapolate outside it.
-const float FEATURE_MIN = -237.70f;
+// Calibration feature envelope from the grouped calibration data.
+// This only labels the estimate; it never prevents displaying it.
+const float FEATURE_MIN = -237.80f;
 const float FEATURE_MAX = -194.80f;
 
-// ============================================================
-// MEASUREMENT AND DISPLAY SETTINGS
-// ============================================================
+// Measurement and display settings
 const uint8_t SAMPLES = 64;
 const unsigned long UPDATE_INTERVAL_MS = 1000;
 const unsigned long DEBOUNCE_MS = 40;
@@ -53,16 +53,16 @@ int stableButtonState = HIGH;
 unsigned long lastDebounceTime = 0;
 
 // ============================================================
-// READ BOTH DIVIDERS
-// Keep the circuit, wiring, excitation, and ADC reference fixed.
-// The difference feature rejects much of the common additive shift
-// seen when moving the perfboard; the ratio did not.
+// READ BOTH ANALOGUE CHANNELS
+// Readings at the ADC rails are still returned to the caller.
+// The caller computes and displays an estimate, then labels the
+// measurement as an ADC-rail estimate if applicable.
 // ============================================================
-bool readSensors(float &a0Mean, float &a1Mean) {
+void readSensors(float &a0Mean, float &a1Mean) {
   digitalWrite(EXCITATION_PIN, HIGH);
   delay(5);
 
-  // Discard initial conversions after excitation / channel start.
+  // Discard initial conversions after starting measurement.
   (void)analogRead(SENSOR_PIN_A0);
   (void)analogRead(SENSOR_PIN_A1);
 
@@ -78,18 +78,10 @@ bool readSensors(float &a0Mean, float &a1Mean) {
 
   a0Mean = (float)sumA0 / (float)SAMPLES;
   a1Mean = (float)sumA1 / (float)SAMPLES;
-
-  if (a0Mean <= 1.0f || a0Mean >= 1022.0f ||
-      a1Mean <= 1.0f || a1Mean >= 1022.0f) {
-    return false;
-  }
-
-  return true;
 }
 
 // ============================================================
-// CHECK AND DEBOUNCE THE CELSIUS/FAHRENHEIT BUTTON
-// Button connects D8 to GND when pressed.
+// C/F BUTTON
 // ============================================================
 void checkUnitButton() {
   int reading = digitalRead(UNIT_BUTTON_PIN);
@@ -110,64 +102,88 @@ void checkUnitButton() {
 }
 
 // ============================================================
-// DISPLAY TEMPERATURE AND FEATURE-RANGE STATUS
+// DISPLAY
+// The temperature is displayed regardless of ADC means or range.
+// The second row warns when data are outside normal conditions.
 // ============================================================
-void showOnLCD(float temperatureC, float feature, bool outOfCal) {
+void showOnLCD(float temperatureC, float difference,
+               bool outOfCal, bool adcRail) {
   float shownTemperature = temperatureC;
   if (showFahrenheit) {
     shownTemperature = temperatureC * 9.0f / 5.0f + 32.0f;
   }
   char unit = showFahrenheit ? 'F' : 'C';
 
-  char tempBuffer[10];
-  char featureBuffer[10];
+  char tempBuffer[12];
+  char featureBuffer[12];
   dtostrf(shownTemperature, 5, 1, tempBuffer);
-  dtostrf(feature, 6, 1, featureBuffer);
+  dtostrf(difference, 6, 1, featureBuffer);
 
+  // Row 1: always show the calculated estimate.
   lcd.setCursor(0, 0);
   lcd.print(F("Temp:"));
   lcd.print(tempBuffer);
   lcd.print(' ');
   lcd.print(unit);
-  lcd.print(F("   "));
+  lcd.print(F("    "));
 
+  // Row 2: status only; do not block the temperature display.
   lcd.setCursor(0, 1);
-  if (outOfCal) {
-    lcd.print(F("OUT CAL D:"));
+  if (adcRail) {
+    lcd.print(F("ADC RAIL D="));
+    char shortFeature[8];
+    dtostrf(difference, 5, 0, shortFeature);
+    lcd.print(shortFeature);
+  } else if (outOfCal) {
+    lcd.print(F("OUT CAL D="));
+    lcd.print(featureBuffer);
   } else {
-    lcd.print(F("IN CAL  D:"));
+    lcd.print(F("IN CAL D="));
+    lcd.print(featureBuffer);
+    lcd.print(' ');
   }
-  lcd.print(featureBuffer);
-  lcd.print(F(" "));
-}
-
-void showSensorError() {
-  lcd.setCursor(0, 0);
-  lcd.print(F("CHECK SENSOR    "));
-  lcd.setCursor(0, 1);
-  lcd.print(F("Check A0/A1/GND "));
 }
 
 // ============================================================
 // SERIAL DIAGNOSTICS
 // Open Serial Monitor at 115200 baud.
 // ============================================================
-void printToSerial(float a0Mean, float a1Mean, float difference,
-                   float ratio, float temperatureC, bool outOfCal) {
+void printMeasurements(float a0Mean, float a1Mean,
+                       float difference, bool ratioAvailable,
+                       float ratio) {
+  Serial.print(F("A0_mean=")); Serial.print(a0Mean, 3);
+  Serial.print(F(", A1_mean=")); Serial.print(a1Mean, 3);
+  Serial.print(F(", diff_count=")); Serial.print(difference, 3);
+  Serial.print(F(", ratio_diagnostic="));
+  if (ratioAvailable) {
+    Serial.print(ratio, 6);
+  } else {
+    Serial.print(F("NA"));
+  }
+}
+
+void printTemperature(float a0Mean, float a1Mean, float difference,
+                      bool ratioAvailable, float ratio, float z,
+                      float temperatureC, bool outOfCal, bool adcRail) {
   float shownTemperature = temperatureC;
   if (showFahrenheit) {
     shownTemperature = temperatureC * 9.0f / 5.0f + 32.0f;
   }
 
-  Serial.print(F("A0_mean=")); Serial.print(a0Mean, 3);
-  Serial.print(F(", A1_mean=")); Serial.print(a1Mean, 3);
-  Serial.print(F(", diff_count=")); Serial.print(difference, 3);
-  Serial.print(F(", ratio_diagnostic=")); Serial.print(ratio, 6);
+  printMeasurements(a0Mean, a1Mean, difference, ratioAvailable, ratio);
+  Serial.print(F(", z=")); Serial.print(z, 6);
   Serial.print(F(", Tfit_C=")); Serial.print(temperatureC, 3);
   Serial.print(F(", Temperature=")); Serial.print(shownTemperature, 1);
   Serial.print(' '); Serial.print(showFahrenheit ? 'F' : 'C');
   Serial.print(F(", status="));
-  Serial.println(outOfCal ? F("OUT_OF_CAL_ESTIMATE") : F("IN_CAL"));
+
+  if (adcRail) {
+    Serial.println(F("ADC_RAIL_ESTIMATE"));
+  } else if (outOfCal) {
+    Serial.println(F("OUT_OF_CAL_ESTIMATE"));
+  } else {
+    Serial.println(F("IN_CAL"));
+  }
 }
 
 void setup() {
@@ -175,9 +191,8 @@ void setup() {
   digitalWrite(EXCITATION_PIN, LOW);
   pinMode(UNIT_BUTTON_PIN, INPUT_PULLUP);
 
-  // Uno R3 internal nominal 1.1 V reference. Its actual voltage
-  // need not be exactly 1.100 V; the ratio helps cancel a common
-  // ADC scale factor when both channels are measured consistently.
+  // Arduino Uno R3 nominal internal 1.1 V ADC reference.
+  // The actual reference value is not assumed to be exactly 1.100 V.
   analogReference(INTERNAL);
   delay(100);
   (void)analogRead(SENSOR_PIN_A0);
@@ -186,7 +201,7 @@ void setup() {
   Serial.begin(115200);
   lcd.begin(16, 2);
   lcd.setCursor(0, 0); lcd.print(F("PT100 Thermo"));
-  lcd.setCursor(0, 1); lcd.print(F("Diff calibration"));
+  lcd.setCursor(0, 1); lcd.print(F("Quadratic LSQ"));
   delay(800);
   lcd.clear();
 
@@ -202,21 +217,25 @@ void loop() {
 
   float a0Mean = 0.0f;
   float a1Mean = 0.0f;
-  if (!readSensors(a0Mean, a1Mean)) {
-    showSensorError();
-    Serial.println(F("ERROR: Invalid ADC reading; check divider wiring."));
-    return;
-  }
+  readSensors(a0Mean, a1Mean);
 
-  float difference = a0Mean - a1Mean;
-  float ratio = a0Mean / a1Mean; // diagnostic only; not the calibration feature
-  float z = (difference - FEATURE_CENTER) / FEATURE_SCALE;
-  float temperatureC = C0 + C1 * z;
-  bool outOfCal = (difference < FEATURE_MIN || difference > FEATURE_MAX);
+  const float difference = a0Mean - a1Mean;
 
-  // No extra exponential temperature filter is applied. Averaging
-  // 64 pairs already reduces ADC noise; avoid a second filter
-  // during calibration and independent validation.
-  showOnLCD(temperatureC, difference, outOfCal);
-  printToSerial(a0Mean, a1Mean, difference, ratio, temperatureC, outOfCal);
+  // Ratio is diagnostic only; protect against division by zero.
+  const bool ratioAvailable = (a1Mean > 0.0f);
+  const float ratio = ratioAvailable ? (a0Mean / a1Mean) : 0.0f;
+
+  // A rail reading is flagged, but DOES NOT block displaying a temperature.
+  const bool adcRail =
+      (a0Mean <= 1.0f || a0Mean >= 1022.0f ||
+       a1Mean <= 1.0f || a1Mean >= 1022.0f);
+
+  const float z = (difference - FEATURE_CENTER) / FEATURE_SCALE;
+  const float temperatureC = LSQ_C0 + LSQ_C1 * z + LSQ_C2 * z * z;
+  const bool outOfCal =
+      (difference < FEATURE_MIN || difference > FEATURE_MAX);
+
+  showOnLCD(temperatureC, difference, outOfCal, adcRail);
+  printTemperature(a0Mean, a1Mean, difference, ratioAvailable, ratio,
+                   z, temperatureC, outOfCal, adcRail);
 }
