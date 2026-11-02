@@ -1,0 +1,76 @@
+UGV PROJECT – REFERENCES AND ACKNOWLEDGEMENTS
+
+Project: Unmanned Ground Vehicle (UGV)
+Course: EE1010 – Introduction to Electrical Engineering
+Institution: Indian Institute of Technology Hyderabad
+
+==================================================
+1. ESP32 AND MICROCONTROLLER DOCUMENTATION
+==================================================
+
+[1] Espressif Systems, "ESP32 Series Datasheet."
+https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf
+
+[2] Espressif Systems, "LED Control (LEDC) API – Arduino-ESP32 Documentation."
+https://docs.espressif.com/projects/arduino-esp32/en/latest/api/ledc.html
+
+[3] Espressif Systems, "Bluetooth – Arduino-ESP32 Documentation."
+https://docs.espressif.com/projects/arduino-esp32/en/latest/api/bluetooth.html
+
+==================================================
+2. BLUETOOTH AND REMOTE CONTROL
+==================================================
+
+[4] STEMpedia, "Getting Started with Dabble."
+https://ai.thestempedia.com/docs/dabble-app/getting-started-with-dabble/
+
+[5] STEMpedia, "Gamepad Module – Dabble Documentation."
+https://ai.thestempedia.com/docs/dabble-app/gamepad-module/
+
+These resources were consulted for smartphone-based Bluetooth communication and gamepad control.
+
+==================================================
+3. HARDWARE AND ASSEMBLY REFERENCES
+==================================================
+
+[6] Gadepall, "voice-ugv: Controlling UGV through Voice Commands."
+https://github.com/gadepall/voice-ugv
+
+This repository was consulted for hardware and assembly-related reference material. Its source code was not used as the basis for the implementation of the present project's control system.
+
+==================================================
+4. USE OF ARTIFICIAL INTELLIGENCE
+==================================================
+
+[7] OpenAI, "ChatGPT."
+https://chatgpt.com/
+
+ChatGPT was used as an AI-assisted tool during the development of the UGV project.
+
+The assistance included:
+
+- Understanding ESP32 microcontroller concepts and PWM-based motor control.
+- Planning the implementation of independent motor control.
+- Understanding Bluetooth communication and smartphone-based control using Dabble.
+- Developing and improving Arduino/ESP32 code.
+- Discussing smooth acceleration and deceleration techniques.
+- Troubleshooting hardware and software issues.
+- Understanding Bluetooth disconnection handling and fail-safe stopping.
+- Improving code readability, organisation, and documentation.
+- Preparing and formatting the project progress log using LaTeX.
+
+AI-generated suggestions were treated as guidance and were reviewed against technical documentation and practical testing wherever applicable.
+
+The hardware implementation, physical assembly, testing, observations, and final verification of the project were carried out by the project author.
+
+==================================================
+5. ACKNOWLEDGEMENT
+==================================================
+
+The author acknowledges the documentation and resources provided by Espressif Systems, STEMpedia, and Gadepall, which assisted in understanding the hardware and software aspects of the project.
+
+OpenAI's ChatGPT was used as an AI-assisted learning, development, debugging, and documentation tool.
+
+==================================================
+END OF REFERENCES
+==================================================
