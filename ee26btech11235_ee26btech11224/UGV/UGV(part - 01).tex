@@ -1,0 +1,371 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx,float,amsmath,xcolor,booktabs,caption,listings}
+\usepackage[hidelinks]{hyperref} % also provides \url
+
+% ---------- Helpers ----------
+% Red placeholder: search for "TODO" before submitting and remove all of them.
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+% Boxed link to source code
+\newcommand{\sourcebox}[1]{%
+  \par\noindent\fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{%
+  \textbf{Source code:} \url{#1}}}\par\medskip}
+
+% Base URL: replace main with a commit hash or tag so the graded code never changes
+\newcommand{\repo}{https://github.com/yashrajkranthi22-jpg/EE1010-Project-Submissions-2026/blob/main/ee26btech11235_ee26btech11224/UGV/codes}
+
+\lstset{basicstyle=\ttfamily\footnotesize, breaklines=true, frame=single,
+        numbers=left, numberstyle=\tiny, keywordstyle=\color{blue}}
+
+\title{UGV Part 1: Progress Log}
+\author{Yashraj Kranthi  \\
+        EE26BTECH11235}
+\date{1 November 2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+%=====================================================================
+\section{Project Overview}
+
+\subsection{Objective}
+The objective of this project is to design and implement a remotely controlled Unmanned Ground Vehicle (UGV) using an ESP32 microcontroller. The vehicle uses a two-wheel differential-drive mechanism with two DC motors.
+
+The UGV is controlled wirelessly over Bluetooth from an Android smartphone running the Dabble gamepad app. The ESP32 processes the received commands and generates PWM signals that control the speed and direction of the motors through an L293D motor driver.
+
+Part 1 focuses on reliable motor control, smooth acceleration and deceleration, and wireless communication with a safe failure mode.
+
+\subsection{Hardware Architecture}
+\begin{itemize}
+    \item \textbf{ESP32 development board:} main controller; receives Bluetooth commands, interprets them and generates PWM and direction signals.
+    \item \textbf{L293D motor driver:} dual H-bridge that lets the ESP32 control the direction and speed of the two DC motors.
+    \item \textbf{DC motors (2):} provide the mechanical movement for the differential drive.
+    \item \textbf{Battery supply:} two 18650 lithium-ion cells in series (nominal 7.4\,V, 8.4\,V fully charged).
+    \item \textbf{Voltage regulator (7805, intended):} provides a regulated 5\,V supply for the ESP32 and the L293D logic supply. (See Section~\ref{sec:regulator} for the problem encountered with this part.)
+    \item \textbf{Bluetooth communication:} the ESP32's built-in Bluetooth links to the Dabble gamepad on the smartphone.
+\end{itemize}
+
+\subsection{Working Principle}
+\begin{enumerate}
+    \item The user presses a button on the Dabble gamepad on an Android smartphone.
+    \item The command is transmitted to the ESP32 over Bluetooth.
+    \item The ESP32 interprets the command and determines the required movement.
+    \item The ESP32 outputs direction-control signals and PWM signals to the L293D.
+    \item The L293D drives the two DC motors accordingly.
+    \item The difference in direction and speed between the two motors determines how the UGV moves (straight, turning, or pivoting).
+\end{enumerate}
+
+\subsection{Design Notes}
+\begin{itemize}
+    \item \textbf{Logic levels:} the ESP32 GPIO outputs 3.3\,V, which is above the L293D's logic-high input threshold, so the ESP32 can drive the L293D inputs directly.
+    \item \textbf{Driver voltage drop:} the L293D has a voltage drop of roughly 1.4\,V per output stage, so the motors receive less than the battery voltage.
+    \item \textbf{Common ground:} the battery negative, ESP32 GND and the L293D ground pins are tied to a single ground rail to give all signals the same reference.
+    \item \textbf{Regulator dissipation:} a linear regulator dissipates $P \approx (V_{in}-V_{out})\,I$ as heat, i.e.\ about $3.4\,I$ watts at 8.4\,V in and 5\,V out, so it can get hot under load.
+\end{itemize}
+
+\subsection{Planned Features and Scope of Part 1}
+\begin{enumerate}
+    \item Assembly and testing of the motor-driving circuit.
+    \item Independent PWM speed control of the left and right motors.
+    \item Forward, reverse, left, right and stop commands.
+    \item Smooth acceleration and deceleration.
+    \item Speed adjustment (initially planned as three fixed levels; revised, see Entry~\ref{entry:plan}).
+    \item Bluetooth communication with a communication-loss stopping mechanism.
+    \item Basic motor calibration and electrical reliability testing.
+\end{enumerate}
+
+\subsection{Expected Outcome}
+A functional two-wheel differential-drive UGV that can be operated remotely over Bluetooth, with independent motor control, adjustable speed, smooth acceleration and deceleration, and a safe stop when the Bluetooth connection is lost.
+
+\subsection{Bill of Materials}
+\begin{table}[H]
+\centering
+\caption{Components used}
+\label{tab:bom}
+\begin{tabular}{@{}llc@{}}
+\toprule
+\textbf{Component} & \textbf{Details} & \textbf{Qty} \\
+\midrule
+ESP32 development board & Main controller & 1 \\
+L293D & Dual H-bridge motor driver & 1 \\
+DC motors with wheels & Differential drive & 2 \\
+18650 Li-ion cells & Series pack, 7.4\,V nominal & 2 \\
+Voltage regulator & 7805 intended (see Section~\ref{sec:regulator}) & 1 \\
+USB cable & Programming the ESP32 & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Progress Log}
+
+\subsection*{Entry 1: Collecting components}
+Collected the components from the core labs (Figure~\ref{fig:components}). I forgot to collect the USB cable even though I had filled in the request form; this delayed uploading code to the ESP32 until Entry~\ref{entry:usb}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{Untitled.jpeg}
+    \caption{Components collected from the core labs}
+    \label{fig:components}
+\end{figure}
+
+\subsection*{Entry 2: Wiring the ESP32 and L293D}
+Primary connections are shown in Figure~\ref{fig:wiring1}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{2.jpeg}
+    \caption{Primary connections to the ESP32}
+    \label{fig:wiring1}
+\end{figure}
+
+\paragraph{Mistake and correction.} I assumed that L293D pins 9--16 were numbered left to right. They are actually numbered right to left: the pins run counter-clockwise starting from the notch. Figure~\ref{fig:wrongpinout} shows the wrong wiring and Figure~\ref{fig:correctwiring} the corrected version.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{3.jpeg}
+    \caption{Incorrect wiring caused by a wrong L293D pinout assumption}
+    \label{fig:wrongpinout}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\linewidth]{4.jpeg}
+    \caption{Correctly wired ESP32 and L293D}
+    \label{fig:correctwiring}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Pin mapping}
+\label{tab:pins}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{ESP32 pin} & \textbf{L293D pin} & \textbf{Function} \\
+\midrule
+18 & 1 & Left motor PWM / enable (1,2EN) \\
+32 & 2 & Left motor direction input 1 (1A) \\
+33 & 7 & Left motor direction input 2 (2A) \\
+19 & 9 & Right motor PWM / enable (3,4EN) \\
+25 & 10 & Right motor direction input 1 (3A) \\
+26 & 15 & Right motor direction input 2 (4A) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Common ground rail.} I connected the negative terminal of the battery, the ESP32 GND and L293D pins 4, 5, 12 and 13 to a common ground rail (Figure~\ref{fig:gnd}). The finished wiring is shown in Figure~\ref{fig:finishedwiring}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{5.jpeg}
+    \caption{Making the common ground rail}
+    \label{fig:gnd}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{6.jpeg}
+    \caption{Finished circuit wiring}
+    \label{fig:finishedwiring}
+\end{figure}
+
+\subsection*{Entry 3: Checking the two motors with PWM}
+I checked the rotation direction and speed of each motor under different PWM values using the code in Figure~\ref{fig:pwmcode}.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{7.png}
+    \caption{Code used to check individual motor behaviour at different PWM values}
+    \label{fig:pwmcode}
+\end{figure}
+
+This gives us:
+\begin{enumerate}
+    \item \textbf{Controlled turning:} rotating one wheel faster than the other.
+    \item \textbf{Differential steering:} rotating the wheels in opposite directions to pivot about the centre.
+    \item \textbf{Individual motor control:} starting, stopping and reversing either motor independently.
+\end{enumerate}
+
+\begin{table}[H]
+\centering
+\caption{Goal of independent motor control}
+\label{tab:goal}
+\begin{tabular}{@{}lp{0.7\linewidth}@{}}
+\toprule
+\textbf{System} & \textbf{Behaviour} \\
+\midrule
+Old & Both motors receive the same fixed power level. \\
+Improved & The ESP32 independently controls the speed and direction of each motor. \\
+\bottomrule
+\end{tabular}
+\end{table}
+This lets the UGV move straight, turn precisely, rotate in place and compensate for differences between the motors.
+
+\subsection*{Entry 4: Prerequisites}
+\label{entry:usb}
+\paragraph{USB cable.} I obtained the missing USB cable from the core labs (Figure~\ref{fig:usb}).
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\linewidth]{7.jpeg}
+    \caption{USB cable obtained from the core labs}
+    \label{fig:usb}
+\end{figure}
+
+\paragraph{Updated wiring.} The circuit was updated to power the ESP32 through the regulator (Figure~\ref{fig:wiring7805}).
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{8.jpeg}
+    \caption{Updated wiring using the regulator}
+    \label{fig:wiring7805}
+\end{figure}
+
+\paragraph{ESP32 board support.} I installed the ESP32 board package from the Boards Manager in the Arduino IDE (Figure~\ref{fig:boardmgr}).
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{9.jpeg}
+    \caption{Installing the ESP32 board package in the Arduino IDE}
+    \label{fig:boardmgr}
+\end{figure}
+
+\subsection*{Entry 5: Independent PWM speed control}
+The following Arduino program implements independent PWM speed control for the left and right motors using the ESP32 and L293D.
+\sourcebox{\repo/PWM_testing.ino}
+
+\subsection*{Entry 6 : Problems encountered: right motor and power supply}
+\label{sec:regulator}
+\paragraph{Symptoms.} (1) The right wheel did not rotate when the code ran. (2) The ESP32 did not power on from the battery through the regulator.
+
+\paragraph{Diagnosis: right motor.} I first checked the wires from each motor: the left wheel worked as intended and the right did not. Inspecting the right motor, I found that one soldered joint had broken off. After resoldering, it still did not work, because the wire to that joint had also broken and was already very short. While joining the short wires, the wire's joint with the motor came off again. After re-making the joints, both motors worked as intended.
+
+\paragraph{Diagnosis: power supply.} The ESP32 is meant to run without USB, but here the regulator became hot, the motors worked, and the ESP32 stayed off. When I connected the ESP32 VIN pin directly to the regulator's input pin, it turned on. On checking the part, I found that I had an \textbf{IC 7905 instead of a 7805}. 
+
+\paragraph{Root cause.} The 7905 is a \emph{negative} 5\,V regulator with a different pinout, so it could not supply +5\,V to the ESP32.
+
+\paragraph{Fix.} I have to get a 7805 from core labs.
+
+\paragraph{Lesson.} Check part markings and measure regulator output with a multimeter before connecting the ESP32.
+
+\subsection*{Entry 7: Results of independent PWM speed control}
+Both wheels can operate at different PWM values, which gives fine control over the motors. I also verified that the movement commands work as listed in Table~\ref{tab:movement}.
+\begin{table}[H]
+\centering
+\caption{Basic movement test}
+\label{tab:movement}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Movement} & \textbf{Left motor} & \textbf{Right motor} & \textbf{Observed result} \\
+\midrule
+Forward     & Forward  & Forward  & UGV moved forward. \\
+Backward    & Backward & Backward & UGV moved backward. \\
+Left pivot  & Reverse  & Forward  & UGV pivoted to the left. \\
+Right pivot & Forward  & Reverse  & UGV pivoted to the right. \\
+Stop        & Stop     & Stop     & Both motors stopped and the UGV remained stationary. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{Entry 8: Bluetooth connection with the Android phone}
+This code verifies communication between the phone and the ESP32.
+\sourcebox{\repo/bluetooth_testing.ino}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\linewidth]{10.jpeg}
+    \caption{Pairing with the ESP32 over Bluetooth}
+    \label{fig:pairing}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\linewidth]{11.jpeg}
+    \caption{Downloading the Dabble library in the Arduino IDE}
+    \label{fig:dabble}
+\end{figure}
+The ESP32 connected to the Dabble app over Bluetooth, and I checked that every button press was read correctly (Figure~\ref{fig:gamepad}). The controls were tested with the following code:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{12.jpeg}
+    \caption{Gamepad module in the Dabble app}
+    \label{fig:gamepad}
+\end{figure}
+\sourcebox{\repo/controls_testing.ino}
+
+\subsection*{Entry 9: Moving the UGV with the Dabble gamepad}
+Code used for this step:
+\sourcebox{\repo/moving_using_controls.ino}
+
+The code supported three speeds:
+\begin{table}[H]
+\centering
+\caption{Initial speed levels}
+\label{tab:speeds}
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Speed} & \textbf{PWM (0--255)} \\
+\midrule
+Slow & 100 \\
+Medium & 160 \\
+Fast & 220 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Observation.} The UGV only moved at the Fast setting; below about 160 PWM the motors did not start. Finding the exact minimum starting PWM for each motor is needed before meaningful slow and medium speeds can be defined.
+
+
+\subsection*{Entry 10: Change of plan}
+\label{entry:plan}
+Calibrating exact PWM values for slow, medium and fast for each individual motor would take too long. I therefore \textbf{replaced the three fixed speeds with a user-adjustable PWM}, controlled from the gamepad as in Table~\ref{tab:pwm-button-controls}. This also handles the minimum-starting-PWM problem, since the user can tune the PWM live.
+
+\begin{table}[H]
+    \centering
+    \caption{Bluetooth button controls for PWM adjustment}
+    \label{tab:pwm-button-controls}
+    \begin{tabular}{@{}clc@{}}
+        \toprule
+        \textbf{Dabble button} & \textbf{Action} & \textbf{PWM change} \\
+        \midrule
+        Square   & Increase PWM by 10 & $+10$ \\
+        Triangle & Increase PWM by 1  & $+1$ \\
+        Circle   & Decrease PWM by 10 & $-10$ \\
+        X        & Decrease PWM by 1  & $-1$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection*{Entry 11: Smooth acceleration and deceleration}
+Abrupt changes in PWM cause sudden current spikes and wheel slip, and put stress on the motors and gears. I therefore made the PWM change gradually over 1.5\,s. The code keeps four variables, \texttt{currentPWMLeft}, \texttt{targetPWMLeft}, \texttt{currentPWMRight} and \texttt{targetPWMRight}, and moves each \texttt{current} value linearly towards its \texttt{target} using \texttt{micros()}. Because it uses \texttt{micros()} rather than \texttt{delay()}, the loop is non-blocking and Bluetooth inputs are still read during a ramp.
+
+
+
+\sourcebox{\repo/smooth_acc.ino}
+
+\subsection*{Entry 12: Mechanical damage and repair}
+My UGV fell to the ground during testing and the battery cable was cut in half. I patched it by soldering, after which nothing worked.
+
+\paragraph{Diagnosis.} I tested the motors and they did not work. I took everything apart. The motor solder joints were intact, and the ESP32 was functioning properly (visible on the serial monitor). Powering the motors from the ESP32 VIN and GND pins showed that the motors themselves were fine. This isolated the fault to the battery cable I had patched.
+
+\paragraph{Root cause and fix.} The patched cable was not conducting because of a faulty repair. I removed it and re-made the connection, and the UGV then worked as intended.
+
+\paragraph{Lessons.} Secure the battery pack in a holder, add strain relief to the cable, and insulate soldered joints (e.g.\ with heat shrink). Test continuity with a multimeter after any repair.
+
+\subsection*{Entry 13: Bluetooth reconnection and fail-safe}
+I improved the code so that:
+\begin{itemize}
+    \item the ESP32 is available to connect over Bluetooth every time it is powered on;
+    \item if the Bluetooth connection drops, the UGV performs an emergency stop (fail-safe);
+    \item the emergency stop can also be toggled manually with the Start button, and reset with the Select button.
+\end{itemize}
+\sourcebox{\repo/bluetooth_reconnect.ino}
+
+%=====================================================================
+\section{Current Status}
+\paragraph{Completed in Part 1.}
+\begin{itemize}
+    \item Two-wheel differential-drive UGV wired and working.
+    \item Independent PWM control of both motors; forward, reverse, left, right and stop.
+    \item Bluetooth control from an Android phone via Dabble.
+    \item User-adjustable PWM instead of fixed speed levels.
+    \item Smooth acceleration and deceleration.
+    \item Fail-safe emergency stop on Bluetooth loss.
+\end{itemize}
+\paragraph{Deviations from the plan.} Fixed speed levels were replaced with adjustable PWM (Entry~\ref{entry:plan})[motor calibration revealed that the minimum PWM for rotation of both wheels are nearly the same]
+
+
+
+\end{document}
